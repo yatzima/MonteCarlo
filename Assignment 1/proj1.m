@@ -253,6 +253,7 @@ drawV2 = Grand(N);
 %Importance Sampling 3a)
 draw = Grand(N);
 phiomega1 = P(draw)*(f(draw)/g(draw));
+tau = mean(phiomega1);
 tau2 = 2 * mean(phiomega1);
 
 
@@ -261,7 +262,7 @@ phiobjective = pjoint(drawV1, drawV2);
 ftarget = fjoint(drawV1', drawV2);
 ginstrumental = gjoint(drawV1', drawV2);
 phiomega2 = phiobjective * (ftarget./ginstrumental);
-cov = (1/N^2)*sum(sum(phiomega2)) - tau2
+cov = (1/N^2)*sum(sum(phiomega2)) - tau^2
 
 %Calculating the variance
 var = 2*var(phiomega1) + 2*cov;
