@@ -206,7 +206,7 @@ close all
 load('powercurve_V112.mat');
 
 %Defining sample size.
-N = 1000;
+N = 1e4;
 
 %Defining the given constants.
 alpha = 0.638; pe = 3; q = 1.5; lambda = 9.13; k = 1.96;
@@ -218,8 +218,8 @@ kappaG = 2.5;
 
 %Defining mu and sigma for the normal distribution used as instrumental
 %function in IS for bivariate case.
-mu = 6;
-sigma = 10;
+mu = 11;
+sigma = 3;
 
 %Defining functions that are used to formulate the joint PDF
 F = @(v) wblcdf(v, lambda, k);
@@ -233,58 +233,87 @@ pjoint = @(v1, v2) P(v1) .* P(v2);
 %Defining 
 Grand = @(N) gamrnd(lamdaG, kappaG, N, 1); 
 %gjoint = @(v1, v2) gampdf(v1, lamdaG, kappaG) .* gampdf(v2, lamdaG, kappaG) ;
-gjoint = @(v1, v2) mvnpdf(v1, mu, sigma) .* mvnpdf(v2, mu, sigma);
+%gjoint = @(v1, v2) mvnpdf(v1, mu, sigma) .* mvnpdf(v2, mu, sigma);
+gjoint = @(v1, v2) normpdf(v1, mu, sigma) .* normpdf(v2, mu, sigma);
 
 x = linspace(0, 25, 100)';
 y = linspace(0, 25, 100)';
-%z1 = gjoint(x, y');
 p1 = pjoint(x, y');
-z2 = fjoint(x, y');
-z3 = mvnpdf(x, mu, sigma) * mvnpdf(y, mu, sigma)';
-%figure(1)
-%surf(x, y, z2);
-figure(2)
-surf(x, y, z3);
+z1 = fjoint(x, y');
+%z2 = mvnpdf(x, mu, sigma) * mvnpdf(y, mu, sigma)';
+%z2 = gjoint(x, y');
+z2 = normpdf(x, mu, sigma) * normpdf(y, mu, sigma)';
+z3 = z1./z2;
 
-%Calculating the expected value of the combined
+figure(1)
+surf(x, y, z1.*p1);
+title('The objective function multiplied with the target function')
+xlabel('x')
+ylabel('y')
+zlabel('z')
+
+figure(2)
+surf(x, y, z2);
+title('The instrumental function chosen as a normal distribution')
+xlabel('x')
+ylabel('y')
+zlabel('z')
+
+figure(3)
+surf(x, y, z3);
+title('The phi-omega quota')
+xlabel('x')
+ylabel('y')
+zlabel('z')
+
+%Calculating the expected value of the combined 
 draw = Grand(N);
 omega = f(draw)./g(draw);
 phiomega1 = P(draw).* omega;
 tau = mean(phiomega1);
 tau2 = 2 * tau;
 
+%Calculating the covariance
 %drawV1 = Grand(N);
 %drawV2 = Grand(N);
-drawV1 = mvnrnd(mu, sigma, N);
-drawV2 = mvnrnd(mu, sigma, N);
+drawV1 = normrnd(mu, sigma, N, 1);
+drawV2 = normrnd(mu, sigma, N, 1);
+%drawV1 = mvnrnd(mu, sigma, N);
+%drawV2 = mvnrnd(mu, sigma, N);
 
-%Calculating the covariance
 phiobjective = pjoint(drawV1, drawV2);
 ftarget = fjoint(drawV1, drawV2);
-ginstrumental = gjoint(drawV1, drawV1);
+ginstrumental = gjoint(drawV1, drawV2);
 
 phiomega2 = phiobjective .* (ftarget./ginstrumental);
-
 cov = mean(phiomega2) - tau.^2;
 
-%Calculating the variance
-var1 = 2*var(phiomega1) + 2*cov;
-
-%Calculating the std
-std = sqrt(var1);
+%Calculating the variance and standard deviation
+vari = 2*var(phiomega1) + 2*cov;
+stde = sqrt(vari);
 
 %Calculating the probability
 Pind1 = @(v1, v2) P(v1) + P(v2) > 3.075e6;
+%Pind1 = @(v1, v2) heaviside(P(v1) + P(v2) - 3.075e6);
 Pind2 = @(v1, v2) P(v1) + P(v2) < 3.075e6;
-N = 1e4;
+N = 1e6;
 %drawV1 = Grand(N);
 %drawV2 = Grand(N);
-drawV1 = mvnrnd(mu, sigma, N);
-drawV2 = mvnrnd(mu, sigma, N);
-%omega = fjoint(drawV1, drawV2)./gjoint(drawV1, drawV2);
+%drawV1 = mvnrnd(mu, sigma, N);
+%drawV2 = mvnrnd(mu, sigma, N);
+drawV1 = normrnd(mu, sigma, N, 1);
+drawV2 = normrnd(mu, sigma, N, 1);
+
 omega = fjoint(drawV1, drawV2)./gjoint(drawV1,drawV2);
-sum1 = Pind1(drawV1, drawV2) .* omega;
-sum2 = Pind2(drawV1, drawV2) .* omega;
+phi1 = Pind1(drawV1, drawV2);
+phi2 = Pind2(drawV1, drawV2);
+sum1 = phi1 .* omega;
+sum2 = phi2 .* omega;
 prob1 = mean(sum1);
 prob2 = mean(sum2);
+lambda95 = norminv(0.975);
+std1 = std(sum1);
+ci1 = prob1 + [-1 1] * lambda95*(std1/sqrt(N));
+std2 = std(sum2);
+ci2 = prob2 + [-1 1] * lambda95*(std2/sqrt(N));
 probtot = prob1 + prob2;
