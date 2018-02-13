@@ -8,7 +8,7 @@ lambda = [10.6 9.7 9.2 8.0 7.8 8.1 7.8 8.1 9.1 9.9 10.6 10.6];
 k = [2.0 2.0 2.0 1.9 1.9 1.9 1.9 1.9 2.0 1.9 2.0 2.0];
 const1 = [5.8 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5];
 const2 = [3 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5];
-month = 1;
+
 N = 1000;
 
 %Defining the stochastic wind speed V for different months
@@ -25,8 +25,7 @@ a = 25;
 b = 3;
 FV = @(u, month) u*(wblcdf(a, lambda(month), k(month)) - wblcdf(b, lambda(month), k(month))) + wblcdf(b, lambda(month), k(month));
 FU = @(U, month) wblinv(U, lambda(month), k(month));
-%%
-% Basics
+%% Basics
 figure(5) 
 lin = linspace(0,30);
 plot(lin,P(lin))
@@ -42,8 +41,7 @@ title('Distribution of wind speeds each month')
 xlabel('Wind Speeds (m/s)')
 ylabel('Distribution of wind speed')
 legend('Jan','Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
-%%
-% Plotting for 2a)-2c)
+%% Plotting for 2a)-2c)
 close all
 ci1 = zeros(12,2);
 ci2 = zeros(12,2);
@@ -161,8 +159,8 @@ for month = 1:12
     EPtot(month) = EPtotFunc(month);
 end
 eff = EP(2,:)./EPtot;
-std = EP(1,:)-EP(3,:);
-stdPost = std./EPtot;
+stde = EP(1,:)-EP(3,:);
+stdPost = stde./EPtot;
 mean(stdPost);
 mean(eff);
 %% 2f)
@@ -175,8 +173,7 @@ for month = 1:12
 end
 capfac = sum(Pmeans)/(12*3.075*10^6);
 avfac = mean(prob);
-%%
-%Plot the quota of Pf/g
+%% Plot the quota of Pf/g
 close all
  figure(2)
  N = 1000;
@@ -195,8 +192,7 @@ title('Quota of P*f/g')
 xlabel('Windspeed (m/s)')
 ylabel('P*f/g')
 legend('Jan','Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
-%%
-%Defining the random-generator for different months
+%% Defining the random-generator for different months
 Frand = @(month, N) wblrnd(lambda(month), k(month), 1, N);
 Grand = @(month, N) gamrnd(const1(month), const2(month), 1, N);
 
@@ -215,7 +211,8 @@ ci4 = zeros(length(N), 2);
 
 month = 1;
 comp = wblcdf(25, lambda(month), k(month)) - wblcdf(3, lambda(month), k(month));
-for N = 1:50:4000;
+
+for N = 1:50:4000
     %Crude Monte Carlo
     draw1 = Frand(month, N);
     y1 = P(draw1);
@@ -237,8 +234,8 @@ for N = 1:50:4000;
     std3 = std(phiomega);
     
     %Antithetic Sampling
-    uniform1 = rand(1, N/2);
-    uniform2 = 1 - rand(1, N/2);
+    uniform1 = rand(1, round(N/2));
+    uniform2 = 1 - rand(1, round(N/2));
     draw41 = FU(uniform1, month);
     draw42 = FU(uniform2, month);
     V1 = P(draw41);
@@ -334,24 +331,26 @@ z3 = z1./z2;
 
 figure(1)
 surf(x, y, z1.*p1);
+set(gca,'fontsize', 18)
 title('The objective function multiplied with the target function')
-xlabel('x')
-ylabel('y')
-zlabel('z')
+xlabel('x [m/s]','fontsize', 18)
+ylabel('y [m/s)','fontsize', 18)
+zlabel('z [W]','fontsize', 18)
 
 figure(2)
 surf(x, y, z2);
+set(gca,'fontsize', 18)
 title('The instrumental function chosen as a normal distribution')
-xlabel('x')
-ylabel('y')
+xlabel('x [m/s]','fontsize', 18)
+ylabel('y [m/s)','fontsize', 18)
 zlabel('z')
 
 figure(3)
 surf(x, y, z3);
 title('The phi-omega quota')
-xlabel('x')
-ylabel('y')
-zlabel('z')
+xlabel('x [m/s]')
+ylabel('y [m/s)')
+zlabel('z [W]')
 
 %Calculating the expected value of the combined 
 draw = Grand(N);
