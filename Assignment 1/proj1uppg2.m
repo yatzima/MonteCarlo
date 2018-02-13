@@ -6,15 +6,15 @@ load('powercurve_V112.mat');
 
 lambda = [10.6 9.7 9.2 8.0 7.8 8.1 7.8 8.1 9.1 9.9 10.6 10.6];
 k = [2.0 2.0 2.0 1.9 1.9 1.9 1.9 1.9 2.0 1.9 2.0 2.0];
-const1 = [5.8 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5];
-const2 = [3 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5];
+const1 = [5.8 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5 6.5 5.8 5.8];
+const2 = [3.0 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 2.5 3.0 3.0];
 month = 1;
 N = 1000;
 
 %Defining the stochastic wind speed V for different months
 f = @(v, month) wblpdf(v, lambda(month), k(month)); 
 %Defining the g function
-g = @(v, month) gampdf(v, const1(month), const2(month));
+g = @(v, month) gampdf(v, mean(const1), mean(const2));
 
 %Defining the random-generator for different months
 Frand = @(month) wblrnd(lambda(month), k(month), 1, N);
@@ -78,8 +78,8 @@ tau3 = mean(phiomega);
 std3 = std(phiomega);
 
 %Antithetic Sampling
-uniform1 = rand(1, N/2);
-uniform2 = 1 - rand(1, N/2);
+uniform1 = rand(1, N);
+uniform2 = 1 - rand(1, N);
 draw41 = FU(uniform1, month);
 draw42 = FU(uniform2, month);
 V1 = P(draw41);
@@ -180,8 +180,8 @@ avfac = mean(prob);
 close all
  figure(2)
  N = 1000;
- c1 = 6.5;
- c2 = 2.3;
+ c1 = mean(const1);
+ c2 = mean(const2);
  hold on
  draw = zeros(N, 12);
  y = zeros(N, 12);
@@ -194,6 +194,7 @@ close all
 title('Quota of P*f/g')
 xlabel('Windspeed (m/s)')
 ylabel('P*f/g')
+%axis([3 25 10e2 10e4])
 legend('Jan','Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')
 %%
 %Defining the random-generator for different months
@@ -237,8 +238,8 @@ for N = 1:50:4000;
     std3 = std(phiomega);
     
     %Antithetic Sampling
-    uniform1 = rand(1, N/2);
-    uniform2 = 1 - rand(1, N/2);
+    uniform1 = rand(1, N);
+    uniform2 = 1 - rand(1, N);
     draw41 = FU(uniform1, month);
     draw42 = FU(uniform2, month);
     V1 = P(draw41);
@@ -290,61 +291,3 @@ title('Confidence interval based on difference MC-methods for January')
 legend([p1 p2 p3 p4], 'Crude MC', 'Truncated Crude MC', 'Importance Sampling', 'Antithetic');
 xlabel('N')
 ylabel('Power Output')
-
-%% Combined power production of two wind turbines
-%Using importance sampling
-%Importance Sampling
-clear
-close all
-
-const1 = 6;
-const2 = 3;
-N = 1000;
-
-alpha = 0.638;
-p = 3;
-q = 1.5;
-
-lambda = [10.6 9.7 9.2 8.0 7.8 8.1 7.8 8.1 9.1 9.9 10.6 10.6];
-k = [2.0 2.0 2.0 1.9 1.9 1.9 1.9 1.9 2.0 1.9 2.0 2.0];
-%%
-k = 1.96;
-lambda = 9.13;
-F = @(v, month) wblcdf(v, lambda(month), k(month));
-f = @(v, month) wblpdf(v, lambda(month), k(month));
-
-Fjoint = @(v1, v2) F(v1)*F(v2)*(1+ alpha*(1 - F(v1).^p).^q * (1 - F(v2).^p).^q);
-fjoint = @(v1, v2) f(v1)*f(v2)*(1+alpha*(1 - F(v1).^p)).^(q-1)*(1 - F(v2).^p).^(q-1) * (F(v1).^p * (1+p*q)-1)*(F(v2).^p*(1+p*q)+1);
-
-Grand = @(month) gamrnd(const1, const2, 1, N); 
-g = @(v1, v2) gampdf(v1', const1, const2) * gampdf(v2, const1, const2);
-
-v1 = linspace(0, 40, 100);
-v2 = linspace(0, 40, 100);
-z = g(v1, v2);
-surf(v1, v2, z)
-
-%importance
-
-
-%draw3 = Grand(month, N);
-%phiomega = P(draw3)*(f(draw3, month)/g(draw3, month));
-%tau3(counter) = mean(phiomega);
-%std3 = std(phiomega);
-%%
-for k = 1:N
-    iP_g = P(v1(1:k))+P(v2(1:k)) > 3.075e+6;
-    iP_l = P(v1(1:k))+P(v2(1:k)) < 3.075e+6;
-    iP_g_imp = iP_g.*f_biv(v1(1:k),v2(1:k))./g(1:k);
-    iP_l_imp = iP_l.*f_biv(v1(1:k),v2(1:k))./g(1:k);
-    iP_g_imp = iP_g_imp(iP_g ~= 0);
-    iP_l_imp = iP_l_imp(iP_l ~= 0);
-    tau_g(k) = mean(iP_g_imp);
-    tau_l(k) = mean(iP_l_imp);
-    s_g = sqrt(mean(iP_g_imp.^2) + (mean(iP_g_imp)).^2);
-    s_l = sqrt(mean(iP_l_imp.^2) + (mean(iP_l_imp)).^2);
-    CI_g_low(k) = tau_g(k)-kvantil.*s_g./sqrt(k);
-    CI_g_up(k) = tau_g(k)+kvantil.*s_g./sqrt(k);
-    CI_l_low(k) = tau_l(k)-kvantil.*s_l./sqrt(k);
-    CI_l_up(k) = tau_l(k)+kvantil.*s_l./sqrt(k);
-end
